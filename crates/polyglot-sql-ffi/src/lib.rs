@@ -12,6 +12,7 @@ mod tokenize;
 mod transpile;
 mod types;
 mod validate;
+mod parse_at;
 
 pub use types::{PolyglotResult, PolyglotValidationResult};
 
@@ -27,3 +28,4 @@ pub use parse::{polyglot_parse, polyglot_parse_one};
 pub use tokenize::polyglot_tokenize;
 pub use transpile::{polyglot_transpile, polyglot_transpile_with_options};
 pub use validate::polyglot_validate;
+pub use parse_at::polyglot_parse_at;

@@ -90,6 +90,49 @@ fn lexer_rejects_malformed_hole_wrong_prefix() {
     );
 }
 
+// ── Group D: sentinel-collision corpus ────────────────────────────────
+// Verify that legitimate user identifiers and string literals which
+// "look like" the sentinel pattern do NOT tokenize as Hole tokens.
+// The non-ASCII guillemets «» in our sentinel make accidental collision
+// structurally impossible — these tests lock that property in place.
+
+#[test]
+fn ascii_underscore_hole_identifier_is_not_a_hole() {
+    let tokenizer = Tokenizer::default();
+    let tokens = tokenizer.tokenize("SELECT hole_1, _HOLE_, HOLE, __hole_42__ FROM users").unwrap();
+    let any_hole = tokens.iter().any(|t| t.token_type == TokenType::Hole);
+    assert!(
+        !any_hole,
+        "ASCII identifiers that 'look like' hole sentinels must NOT tokenize as Hole tokens"
+    );
+}
+
+#[test]
+fn quoted_string_containing_sentinel_chars_is_not_a_hole() {
+    // String literals must be opaque to the lexer's hole recognizer.
+    // A string literal containing the «hole:N» characters is just a string.
+    let tokenizer = Tokenizer::default();
+    let tokens = tokenizer.tokenize("SELECT 'this looks like «hole:5» but is a string' FROM users").unwrap();
+    let any_hole = tokens.iter().any(|t| t.token_type == TokenType::Hole);
+    assert!(
+        !any_hole,
+        "string literals containing the sentinel chars must not produce Hole tokens"
+    );
+}
+
+#[test]
+fn legitimate_double_angle_quote_punctuation_isnt_a_hole() {
+    // The « character without the full «hole:N» pattern should produce
+    // a tokenization error (not silently accept). This proves that random
+    // « in input doesn't get misinterpreted as a half-formed hole.
+    let tokenizer = Tokenizer::default();
+    let result = tokenizer.tokenize("SELECT « FROM users");
+    assert!(
+        result.is_err(),
+        "a bare « without the full hole sentinel pattern must error, not silently accept"
+    );
+}
+
 /// Recursively walk the AST looking for any Expression::Hole node.
 fn contains_hole(exprs: &[Expression]) -> bool {
     exprs.iter().any(expr_contains_hole)

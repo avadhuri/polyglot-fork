@@ -983,4 +983,5 @@ define_expression_subclasses!(
     ReturnStmt,
     CreateSynonym,
     CreateTask,
+    Hole,
 );

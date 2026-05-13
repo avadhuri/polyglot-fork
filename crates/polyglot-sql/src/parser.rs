@@ -30657,7 +30657,7 @@ impl Parser {
                     token.text
                 ))
             })?;
-            return Ok(Expression::Hole { id });
+            return Ok(Expression::Hole(id));
         }
 
         // Handle APPROXIMATE COUNT(DISTINCT expr) - Redshift syntax

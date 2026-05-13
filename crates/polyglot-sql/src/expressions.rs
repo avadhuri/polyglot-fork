@@ -1110,11 +1110,11 @@ pub enum Expression {
     ReturnStmt(Box<Expression>),
 
     /// AvaDhuri template hole: a typed placeholder for substitution at template-expansion time.
-    /// The `id` is opaque to polyglot-sql; it's assigned by the template expander on the .NET
-    /// side and used by the role-checking visitor to map back to the source template position.
-    /// The hole's declared role is supplied externally (via the parse_with_holes role-map);
-    /// this AST node carries only the identity.
-    Hole { id: u32 },
+    /// The wrapped u32 is the hole id — opaque to polyglot-sql; assigned by the template
+    /// expander on the .NET side and used by the role-checking visitor to map back to the
+    /// source template position. Declared role is supplied externally via the
+    /// parse_with_holes role-map; this AST node carries only the identity.
+    Hole(u32),
 }
 
 impl Expression {
@@ -2752,7 +2752,7 @@ impl Expression {
             Expression::Whens(_) => "whens",
             Expression::NextValueFor(_) => "next_value_for",
             Expression::ReturnStmt(_) => "return_stmt",
-            Expression::Hole { .. } => "hole",
+            Expression::Hole(_) => "hole",
         }
     }
 

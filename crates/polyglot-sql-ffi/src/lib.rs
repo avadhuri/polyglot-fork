@@ -13,6 +13,9 @@ mod transpile;
 mod types;
 mod validate;
 mod parse_at;
+mod holes;
+mod hole_visitor;
+mod parse_with_holes;
 
 pub use types::{PolyglotResult, PolyglotValidationResult};
 
@@ -29,3 +32,4 @@ pub use tokenize::polyglot_tokenize;
 pub use transpile::{polyglot_transpile, polyglot_transpile_with_options};
 pub use validate::polyglot_validate;
 pub use parse_at::polyglot_parse_at;
+pub use parse_with_holes::polyglot_parse_with_holes;

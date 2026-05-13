@@ -96,10 +96,10 @@ fn contains_hole(exprs: &[Expression]) -> bool {
 }
 
 fn expr_contains_hole(expr: &Expression) -> bool {
-    if matches!(expr, Expression::Hole { .. }) {
+    if matches!(expr, Expression::Hole(_)) {
         return true;
     }
     // Use the built-in DFS iterator from the ExpressionWalk trait
     use polyglot_sql::traversal::ExpressionWalk;
-    expr.dfs().any(|e| matches!(e, Expression::Hole { .. }))
+    expr.dfs().any(|e| matches!(e, Expression::Hole(_)))
 }

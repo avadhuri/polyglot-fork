@@ -664,6 +664,12 @@ pub enum TokenType {
     Authorization,
     Restart,
 
+    // AvaDhuri extension: typed-template hole sentinel.
+    // Emitted by the lexer when it sees the «hole:N» pattern (non-ASCII guillemets,
+    // structurally impossible to collide with legitimate SQL identifiers).
+    // The numeric ID is stored in the Token's `text` field as a decimal string.
+    Hole,
+
     // Special
     Eof,
 }

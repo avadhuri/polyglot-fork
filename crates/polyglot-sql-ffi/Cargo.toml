@@ -9,6 +9,7 @@ description = "C FFI bindings for the polyglot-sql SQL transpiler"
 publish = false
 
 [lib]
+name = "polyglot_sql"
 crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]

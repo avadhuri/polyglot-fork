@@ -30645,6 +30645,21 @@ impl Parser {
 
     /// Parse primary expressions
     fn parse_primary(&mut self) -> Result<Expression> {
+        // AvaDhuri extension (POC-002): typed-template hole sentinel.
+        // The lexer emits TokenType::Hole when it sees «hole:N»; consume it
+        // as a primary expression atom and emit Expression::Hole { id }.
+        // The role-correctness check happens post-parse in hole_visitor.
+        if self.check(TokenType::Hole) {
+            let token = self.advance();
+            let id: u32 = token.text.parse().map_err(|_| {
+                crate::error::Error::Internal(format!(
+                    "lexer emitted Hole token with non-numeric text: {:?}",
+                    token.text
+                ))
+            })?;
+            return Ok(Expression::Hole { id });
+        }
+
         // Handle APPROXIMATE COUNT(DISTINCT expr) - Redshift syntax
         // Parses as ApproxDistinct expression
         if self.check(TokenType::Var) && self.peek().text.eq_ignore_ascii_case("APPROXIMATE") {

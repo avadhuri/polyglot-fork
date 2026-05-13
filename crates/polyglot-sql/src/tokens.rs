@@ -1861,6 +1861,15 @@ impl<'a> TokenizerState<'a> {
     fn scan_token(&mut self) -> Result<()> {
         let c = self.peek();
 
+        // AvaDhuri extension: typed-template hole sentinel «hole:N» (POC-002).
+        // The opening guillemet « (U+00AB) is not used anywhere in standard SQL,
+        // so seeing it as the first character of a token unambiguously signals
+        // a template-hole sentinel. The non-ASCII bracket pair makes accidental
+        // collision with user identifiers structurally impossible.
+        if c == '«' {
+            return self.scan_template_hole();
+        }
+
         // Check for string literal
         if c == '\'' {
             // Check for triple-quoted string '''...''' if configured
@@ -3336,6 +3345,78 @@ impl<'a> TokenizerState<'a> {
     fn add_token(&mut self, token_type: TokenType) {
         let text = self.text_from_range(self.start, self.current);
         self.add_token_with_text(token_type, text);
+    }
+
+    /// AvaDhuri extension (POC-002): scan a typed-template hole sentinel.
+    ///
+    /// Recognizes the pattern `«hole:N»` where N is a sequence of ASCII digits
+    /// and `«`/`»` are U+00AB / U+00BB (LEFT/RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK).
+    /// The leading `«` has already been peeked but not yet advanced; this method
+    /// advances through the entire sentinel and emits a `TokenType::Hole` token
+    /// whose `text` is the decimal digit string (parseable to u32 by consumers).
+    ///
+    /// If the input is malformed (missing `hole:` prefix, missing closing `»`,
+    /// non-digit after the colon), this method returns an Error — the « character
+    /// must not appear in any other position in legitimate input.
+    fn scan_template_hole(&mut self) -> Result<()> {
+        let start_pos = self.current;
+        let start_line = self.line;
+        let start_col = self.column;
+        self.advance(); // consume the «
+
+        // Expect the literal "hole:" prefix.
+        const PREFIX: &[char] = &['h', 'o', 'l', 'e', ':'];
+        for &expected in PREFIX {
+            if self.peek() != expected {
+                return Err(crate::error::Error::tokenize(
+                    format!(
+                        "malformed hole sentinel: expected '{}' after '«hole', found '{}'",
+                        expected, self.peek()
+                    ),
+                    start_line,
+                    start_col,
+                    start_pos,
+                    self.current,
+                ));
+            }
+            self.advance();
+        }
+
+        // Scan a non-empty sequence of decimal digits.
+        let digit_start = self.current;
+        while self.peek().is_ascii_digit() {
+            self.advance();
+        }
+        if self.current == digit_start {
+            return Err(crate::error::Error::tokenize(
+                "malformed hole sentinel: expected decimal digits after '«hole:'".to_string(),
+                start_line,
+                start_col,
+                start_pos,
+                self.current,
+            ));
+        }
+        let id_text = self.text_from_range(digit_start, self.current);
+
+        // Expect the closing ».
+        if self.peek() != '»' {
+            return Err(crate::error::Error::tokenize(
+                format!(
+                    "malformed hole sentinel: expected '»' to close '«hole:{}', found '{}'",
+                    id_text,
+                    self.peek()
+                ),
+                start_line,
+                start_col,
+                start_pos,
+                self.current,
+            ));
+        }
+        self.advance(); // consume the »
+
+        // The token's `text` field carries the decimal ID; consumers parse it to u32.
+        self.add_token_with_text(TokenType::Hole, id_text);
+        Ok(())
     }
 
     fn add_token_with_text(&mut self, token_type: TokenType, text: String) {

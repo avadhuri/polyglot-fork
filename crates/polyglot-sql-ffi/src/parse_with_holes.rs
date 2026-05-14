@@ -99,14 +99,28 @@ fn parse_with_holes_impl(
         Ok(stmts) => stmts,
         Err(e) => {
             // SQL parse failed. Report it under the "ok": false shape so the
-            // .NET side gets a uniform response.
+            // .NET side gets a uniform response. Extract line/column from the
+            // structured error variants so .NET can reproject probe-side coords
+            // to template source via the per-expansion span map (POC-003).
+            let (line, column, message) = match &e {
+                polyglot_sql::error::Error::Parse { line, column, message, .. } => {
+                    (Some(*line), Some(*column), message.clone())
+                }
+                polyglot_sql::error::Error::Tokenize { line, column, message, .. } => {
+                    (Some(*line), Some(*column), message.clone())
+                }
+                polyglot_sql::error::Error::Syntax { line, column, message, .. } => {
+                    (Some(*line), Some(*column), message.clone())
+                }
+                _ => (None, None, format!("{}", e)),
+            };
             let payload = serde_json::json!({
                 "ok": false,
                 "errors": [{
                     "kind": "parse_error",
-                    "message": format!("{}", e),
-                    "line": null,
-                    "column": null,
+                    "message": message,
+                    "line": line,
+                    "column": column,
                 }],
             });
             return ok_json_result(&payload);

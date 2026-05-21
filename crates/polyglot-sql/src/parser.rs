@@ -3895,6 +3895,23 @@ impl Parser {
 
     #[inline(never)]
     fn parse_table_expression_primary(&mut self) -> Result<Expression> {
+        // AvaDhuri extension (experiment/poc-recipe-wrapper-support):
+        // Accept «hole:N» sentinel in table-factor (FROM-clause) position.
+        // Mirrors the parse_primary handling at the expression-atom level;
+        // the role-correctness check happens post-parse in the spec-repo wrapper
+        // (or hole_visitor in the FFI path). Paired with the spec-repo
+        // experiment/recipe-grammar-wrapper-poc branch.
+        if self.check(TokenType::Hole) {
+            let token = self.advance();
+            let id: u32 = token.text.parse().map_err(|_| {
+                crate::error::Error::Internal(format!(
+                    "lexer emitted Hole token with non-numeric text: {:?}",
+                    token.text
+                ))
+            })?;
+            return Ok(Expression::Hole(id));
+        }
+
         let expr = if self.check(TokenType::Values) && self.check_next(TokenType::LParen) {
             // VALUES as table expression: FROM (VALUES ...)
             // In ClickHouse, bare `values` without ( is a table name
